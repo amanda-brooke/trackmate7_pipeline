@@ -83,7 +83,7 @@ class RadialAnalyzer:
                 radial_direction_x = (center_x - source_x) / r_source
                 radial_direction_y = (center_y - source_y) / r_source
                 radial_direction = np.arctan2(radial_direction_y, radial_direction_x)
-                radial_velocity = u * radial_direction_x + v * radial_direction_y
+                radial_velocity = - (u * radial_direction_x + v * radial_direction_y)
             else:
                 radial_direction = 0
                 radial_velocity = 0

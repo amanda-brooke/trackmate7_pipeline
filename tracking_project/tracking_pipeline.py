@@ -22,6 +22,9 @@ BASE_OUTPUT = Path(base_output_str)
 PICKLES_PATH.mkdir(parents=True, exist_ok=True)
 BASE_OUTPUT.mkdir(parents=True, exist_ok=True)
 
+print("BASE_PATH:", BASE_PATH)
+print("Directories in BASE_PATH:", list(BASE_PATH.iterdir()))
+
 class TrackingPipeline:
     """
     Integrated pipeline to load pre-processed tracking data,
@@ -127,6 +130,34 @@ class TrackingPipeline:
             print(f"Saved {data_type} pickle to {save_path}")
         return combined_data
 
+    def run_radial_analysis_combined(self, combined_spots: pd.DataFrame, combined_edges: pd.DataFrame) -> pd.DataFrame:
+        """
+        Runs radial analysis on combined data that has already been loaded and combined,
+        grouping by File_ID (and optionally by Group if needed). This method processes
+        the entire combined dataset in one go.
+        
+        Assumes the combined_spots and combined_edges DataFrames contain a 'File_ID' column.
+        
+        Returns:
+            A combined edge DataFrame with radial metrics computed per file.
+        """
+        # Create an instance of RadialAnalyzer using the combined data
+        analyzer = RadialAnalyzer(spot_table=combined_spots, edge_table=combined_edges)
+        
+        # Process each file by grouping on File_ID.
+        processed_edges = analyzer.process_all_files()
+        
+        # Calculate radial persistence and add it to the DataFrame
+        analyzer.calculate_radial_persistence(processed_edges)
+        
+        # Save the processed radial analysis DataFrame to a pickle file
+        save_path = self.output_path / "radial_edges.pkl"
+        with open(save_path, 'wb') as f:
+            pickle.dump(processed_edges, f)
+        print(f"Final radial processed data saved to {save_path}")
+
+        return processed_edges
+
     def run_radial_analysis(self, offset_folder: Path) -> pd.DataFrame:
         """
         Loads spots and edges data for a given offset folder, runs radial analysis,
@@ -175,6 +206,11 @@ if __name__ == "__main__":
     
     # For treatment/control experiments:
     tc_results = pipeline.run_treatment_control()
-    
+    #radial_edges_tc = pipeline.run_radial_analysis_combined(tc_results['spots'], tc_results['edges'])
+
+    # For wildtype experiments:
+    #wt_results = pipeline.run_wildtype()
+    #radial_edges_wt = pipeline.run_radial_analysis_combined(wt_results['spots'], wt_results['edges'])
+
     # For radial analysis:
     #radial_edges = pipeline.run_radial_analysis_all()

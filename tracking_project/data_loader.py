@@ -20,9 +20,25 @@ class BaseDataLoader:
         data_table = data_table.apply(pd.to_numeric, errors='coerce', axis=0)
         data_table.fillna(0, inplace=True)
         
-        base_id = file_path.stem.split('_')[0]
-        replicate_id = self.folder.parent.name 
-        # Create a unique File_ID by combining them
+        # Get the file stem (e.g., "c1_spots" or "c1_edges")
+        stem = file_path.stem  
+        # If the stem ends with _<data_type>, remove that part to get the common base id.
+        suffix = f"_{self.data_type}"
+        if stem.endswith(suffix):
+            base_id = stem[:-len(suffix)]
+        else:
+            base_id = stem
+
+        # Determine the replicate identifier based on folder structure:
+        if self.group_label.lower() == "wildtype":
+            # For wildtype: self.folder.parent is the offset folder.
+            replicate_id = self.folder.parent.name  # e.g., "offset_27"
+        else:
+            # For treatment/control: self.folder.parent is the group folder,
+            # and self.folder.parent.parent is the offset folder.
+            replicate_id = f"{self.folder.parent.parent.name}_{self.folder.parent.name}"  # e.g., "offset_27_control"
+        
+        # Create a unique File_ID by combining the common base_id with the replicate info.
         unique_id = f"{base_id}_{replicate_id}"
         data_table['File_ID'] = unique_id
         data_table['Group'] = self.group_label
@@ -38,6 +54,7 @@ class BaseDataLoader:
             data_table['SPOT_TIME'] = (data_table['POSITION_T'] / 3600) + self.time_offset
 
         return data_table
+
 
     def load_all(self) -> pd.DataFrame:
         data_tables = []
