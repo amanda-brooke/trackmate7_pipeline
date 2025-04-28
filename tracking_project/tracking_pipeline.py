@@ -205,12 +205,12 @@ if __name__ == "__main__":
     #wildtype_results = pipeline.run_wildtype()
     
     # For treatment/control experiments:
-    tc_results = pipeline.run_treatment_control()
+    #tc_results = pipeline.run_treatment_control()
     #radial_edges_tc = pipeline.run_radial_analysis_combined(tc_results['spots'], tc_results['edges'])
 
     # For wildtype experiments:
-    #wt_results = pipeline.run_wildtype()
-    #radial_edges_wt = pipeline.run_radial_analysis_combined(wt_results['spots'], wt_results['edges'])
+    wt_results = pipeline.run_wildtype()
+    radial_edges_wt = pipeline.run_radial_analysis_combined(wt_results['spots'], wt_results['edges'])
 
     # For radial analysis:
     #radial_edges = pipeline.run_radial_analysis_all()

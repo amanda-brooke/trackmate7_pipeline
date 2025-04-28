@@ -40,7 +40,7 @@ class Plotter:
         q = ax.quiver(edge_table['source_x'], edge_table['source_y'], 
                       edge_table['u'], edge_table['v'], 
                       edge_table['EDGE_TIME'], angles='xy', scale_units='xy', scale=0.8, 
-                      cmap=cmap, alpha=0.95, headlength=0, headaxislength=0, headwidth=0, width=0.003)
+                      cmap=cmap, alpha=0.95, headlength=0, headaxislength=0, headwidth=0, width=0.004)
         
         ax.set_title(title, fontsize=34)
         ax.set_xlabel('X (µm)', fontsize=20)
@@ -49,6 +49,8 @@ class Plotter:
         ax.grid(False)
         ax.set_aspect('equal', adjustable='box')
         ax.set_facecolor(facecolor)
+        #ax.set_xlim(350, 700)  # Set x-axis to the range [0, 600]
+        #ax.set_ylim(250, 450)  # Set y-axis to the range [0, 600]
         
         cbar = fig.colorbar(q, ax=ax, orientation='vertical', pad=0.02, aspect=10, shrink=0.6)
         cbar.set_label('Time (Hours)', rotation=270, labelpad=20, fontsize=20)

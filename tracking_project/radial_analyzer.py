@@ -21,100 +21,82 @@ class RadialAnalyzer:
         self.edge_table = edge_table.copy()  # work on a copy so the original data remains intact
 
     def process_file(self, file_id: str) -> pd.DataFrame:
-        """
-        Processes the data for a single File_ID.
-        Computes the dynamic center based on the spots for that file,
-        and then calculates the radial metrics for the corresponding edges.
-        
-        Parameters:
-            file_id (str): The identifier for the file.
-            
-        Returns:
-            A processed edge DataFrame for that file with added columns for:
-              - Movement vectors (u, v)
-              - Source and target positions
-              - Radial distance, radial velocity, and radial velocity angle
-              - The dynamic center (center_x, center_y)
-        """
-        # Filter spots and edges for the given file_id
+        # --- slice tables ----------------------------------------------------
         spots = self.spot_table[self.spot_table['File_ID'] == file_id]
         edges = self.edge_table[self.edge_table['File_ID'] == file_id].copy()
-        
         if spots.empty or edges.empty:
             print(f"Warning: No data for File_ID {file_id}")
-            return edges  # returns an empty DataFrame if no data
+            return edges
 
-        # Compute dynamic center (centroid) for this file
+        # drop TrackMate’s zero-length “edge 0→0”
+        edges = edges[~((edges['SPOT_SOURCE_ID'] == edges['SPOT_TARGET_ID']) &
+                        (edges['SPOT_SOURCE_ID'] == 0))].copy()
+
+        # --- dynamic centre --------------------------------------------------
         center_x = spots['POSITION_X'].mean()
         center_y = spots['POSITION_Y'].mean()
         print(f"File {file_id}: Dynamic Center: ({center_x:.2f}, {center_y:.2f})")
-        
-        # Initialize lists to store computed values for each edge row
-        u_values, v_values = [], []
-        source_x_values, source_y_values = [], []
-        target_x_values, target_y_values = [], []
-        radial_distances, radial_velocities = [], []
-        radial_velocity_thetas = []
-        centers_x, centers_y = [], []
 
-        # Process each edge row for this file
+        # --- collectors ------------------------------------------------------
+        u_vals, v_vals = [], []
+        sx_vals, sy_vals, tx_vals, ty_vals = [], [], [], []
+        r_vals, rv_vals, theta_vals = [], [], []
+        cx_vals, cy_vals = [], []
+
+        frame_interval_s = 600  # only used if FRAME fallback is needed
+
+        # ---------------------------------------------------------------------
         for _, row in edges.iterrows():
-            source_id = row['SPOT_SOURCE_ID']
-            target_id = row['SPOT_TARGET_ID']
+            src = spots[spots['ID'] == row['SPOT_SOURCE_ID']]
+            tgt = spots[spots['ID'] == row['SPOT_TARGET_ID']]
+            if src.empty or tgt.empty:
+                continue
 
-            # Get the corresponding source and target spot rows
-            source_spot = spots[spots['ID'] == source_id]
-            target_spot = spots[spots['ID'] == target_id]
-            if source_spot.empty or target_spot.empty:
-                continue  # Skip if either spot is missing
+            sx, sy = src[['POSITION_X', 'POSITION_Y']].values[0]
+            tx, ty = tgt[['POSITION_X', 'POSITION_Y']].values[0]
+            u, v   = tx - sx, ty - sy                        # µm
 
-            source_x = source_spot['POSITION_X'].values[0]
-            source_y = source_spot['POSITION_Y'].values[0]
-            target_x = target_spot['POSITION_X'].values[0]
-            target_y = target_spot['POSITION_Y'].values[0]
+            # time step (minutes) ---------------------------------------------
+            if 'POSITION_T' in spots.columns:                # POSITION_T is in **seconds**
+                ts_min = float(src['POSITION_T'].iloc[0]) / 60   # sec → min
+                tt_min = float(tgt['POSITION_T'].iloc[0]) / 60
+                dt = tt_min - ts_min
+            else:                                            # FRAME fallback
+                dt = ((int(tgt['FRAME'].iloc[0]) -
+                    int(src['FRAME'].iloc[0])) * frame_interval_s) / 60
+            if dt == 0:
+                continue
 
-            # Movement vector components
-            u = target_x - source_x
-            v = target_y - source_y
+            # radial unit vector ----------------------------------------------
+            dx, dy   = center_x - sx, center_y - sy
+            r_source = np.hypot(dx, dy)
+            if r_source == 0:
+                continue
+            ux, uy = dx / r_source, dy / r_source            # inward
 
-            # Compute radial distance from source to dynamic center
-            r_source = np.sqrt((source_x - center_x) ** 2 + (source_y - center_y) ** 2)
-            if r_source != 0:
-                radial_direction_x = (center_x - source_x) / r_source
-                radial_direction_y = (center_y - source_y) / r_source
-                radial_direction = np.arctan2(radial_direction_y, radial_direction_x)
-                radial_velocity = - (u * radial_direction_x + v * radial_direction_y)
-            else:
-                radial_direction = 0
-                radial_velocity = 0
+            # signed radial velocity (µm min⁻¹) -------------------------------
+            rv = -(u * ux + v * uy) / dt                     # + inward
 
-            # Store computed values
-            u_values.append(u)
-            v_values.append(v)
-            source_x_values.append(source_x)
-            source_y_values.append(source_y)
-            target_x_values.append(target_x)
-            target_y_values.append(target_y)
-            radial_distances.append(r_source)
-            radial_velocities.append(radial_velocity)
-            radial_velocity_thetas.append(radial_direction)
-            centers_x.append(center_x)
-            centers_y.append(center_y)
+            # save -------------------------------------------------------------
+            u_vals.append(u);            v_vals.append(v)
+            sx_vals.append(sx);          sy_vals.append(sy)
+            tx_vals.append(tx);          ty_vals.append(ty)
+            r_vals.append(r_source)
+            rv_vals.append(rv)
+            theta_vals.append(np.arctan2(uy, ux))
+            cx_vals.append(center_x);    cy_vals.append(center_y)
 
-        # Add computed columns to the edges DataFrame for this file
-        edges.loc[:, 'u'] = u_values
-        edges.loc[:, 'v'] = v_values
-        edges.loc[:, 'source_x'] = source_x_values
-        edges.loc[:, 'source_y'] = source_y_values
-        edges.loc[:, 'target_x'] = target_x_values
-        edges.loc[:, 'target_y'] = target_y_values
-        edges.loc[:, 'radial_distance'] = radial_distances
-        edges.loc[:, 'radial_velocity'] = radial_velocities
-        edges.loc[:, 'radial_velocity_theta'] = radial_velocity_thetas
-        edges.loc[:, 'center_x'] = centers_x
-        edges.loc[:, 'center_y'] = centers_y
+        # --- write lists back to the same DataFrame --------------------------
+        edges['u']  = u_vals;  edges['v']  = v_vals
+        edges['source_x'] = sx_vals;  edges['source_y'] = sy_vals
+        edges['target_x'] = tx_vals;  edges['target_y'] = ty_vals
+        edges['radial_distance'] = r_vals
+        edges['radial_velocity'] = rv_vals
+        edges['radial_velocity_theta'] = theta_vals
+        edges['center_x'] = cx_vals;     edges['center_y'] = cy_vals
 
         return edges
+
 
     def process_all_files(self) -> pd.DataFrame:
         """
