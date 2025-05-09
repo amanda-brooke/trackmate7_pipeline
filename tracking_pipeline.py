@@ -82,7 +82,7 @@ class TrackingPipeline:
             else:
                 combined_df = pd.DataFrame()
             all_data[data_type] = combined_df
-            save_path = self.output_path / f"wildtype_{data_type}.pkl"
+            save_path = self.output_path / f"wildtype_{data_type}_updated.pkl"
             with open(save_path, 'wb') as f:
                 pickle.dump(combined_df, f)
             print(f"Saved {data_type} pickle to {save_path}")
@@ -124,7 +124,7 @@ class TrackingPipeline:
             else:
                 combined_df = pd.DataFrame()
             combined_data[data_type] = combined_df
-            save_path = self.output_path / f"treatment_control_{data_type}.pkl"
+            save_path = self.output_path / f"treatment_control_{data_type}_updated.pkl"
             with open(save_path, 'wb') as f:
                 pickle.dump(combined_df, f)
             print(f"Saved {data_type} pickle to {save_path}")
@@ -151,7 +151,7 @@ class TrackingPipeline:
         analyzer.calculate_radial_persistence(processed_edges)
         
         # Save the processed radial analysis DataFrame to a pickle file
-        save_path = self.output_path / "radial_edges.pkl"
+        save_path = self.output_path / "radial_edges_updated.pkl"
         with open(save_path, 'wb') as f:
             pickle.dump(processed_edges, f)
         print(f"Final radial processed data saved to {save_path}")
@@ -186,7 +186,7 @@ class TrackingPipeline:
         if all_edges:
             combined_edges = pd.concat(all_edges, ignore_index=True)
             self.results['edges'] = combined_edges
-            save_path = self.output_path / "radial_edges.pkl"
+            save_path = self.output_path / "radial_edges_updated.pkl"
             with open(save_path, 'wb') as f:
                 pickle.dump(combined_edges, f)
             print(f"Final radial processed data saved to {save_path}")

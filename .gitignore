@@ -1,5 +1,5 @@
 /old_src
-/notebooks
-/tracking_project/explore.ipynb
+/notebooks/
+/tracking_project/
 __pycache__/
 *.pyc
